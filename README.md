@@ -1,10 +1,10 @@
 # 1Panel Client - 1Panel 第三方全平台客户端
 
-📱 1Panel 第三方全平台客户端 (Flutter) - iOS/Android/Windows/macOS/Linux
+📱 1Panel 第三方客户端 (Flutter) - iOS/Android/
 
 ## 功能特性
 
-- 🖥️ **全平台支持**: iOS / Android / Windows / macOS / Linux / Web
+- 🖥️ **平台支持**: iOS / Android / 
 - 💰 **免费多机管理**: 无需付费即可管理多个 1Panel 实例
 - 📱 **移动端优化**: 专为竖屏手机设计
 - ✅ **完整 API 支持**: 425+ 1Panel V2 API 端点
