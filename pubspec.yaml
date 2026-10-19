@@ -28,10 +28,6 @@ dependencies:
   uuid: ^4.4.0
   crypto: ^3.0.3
 
-  # 文件
-  file_picker: ^8.0.0
-  open_file: ^3.3.2
-
   # UI 增强
   percent_indicator: ^4.2.3
   shimmer: ^3.0.0

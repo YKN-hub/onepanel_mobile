@@ -6,8 +6,6 @@ import 'package:onepanel_mobile/core/services/logger_service.dart';
 import 'package:onepanel_mobile/data/models/file_models.dart';
 import 'package:onepanel_mobile/widgets/shimmer_loader.dart';
 import 'package:onepanel_mobile/widgets/refresh_icon_button.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:open_file/open_file.dart';
 
 class FilesPage extends StatefulWidget {
   const FilesPage({super.key});
