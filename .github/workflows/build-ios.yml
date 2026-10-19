@@ -211,3 +211,46 @@ jobs:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-ios, build-android]
+    if: needs.build-ios.result == 'success' && needs.build-android.result == 'success'
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Collect release files
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          find dist -type f \( -name '*.apk' -o -name '*.ipa' -o -name '*.tar.gz' \) -exec cp {} release/ \;
+          echo "--- files to publish ---"
+          ls -lh release
+
+      - name: Create / update Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"; PRERELEASE=""
+          else
+            TAG="latest"; PRERELEASE="--prerelease"
+          fi
+          # 同名 Release 已存在则先删除(滚动更新)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes --cleanup-tag || true
+          fi
+          gh release create "$TAG" release/* \
+            --target "${GITHUB_SHA}" \
+            --title "1Panel Client 构建 (${TAG})" \
+            --notes $'自动构建产物:\n- `*-release.apk` 安卓安装包(默认可调试签名,可直接安装)\n- `*-unsigned.ipa` 未签名 iOS 包(需自行签名)\n- `*-xcode-project.tar.gz` 生成的 iOS Xcode 工程(在 Mac 上用 Xcode 签名/归档用)\n\niOS 侧载仍需开启「开发者模式」。' \
+            ${PRERELEASE}
+          echo "Release '$TAG' published."
