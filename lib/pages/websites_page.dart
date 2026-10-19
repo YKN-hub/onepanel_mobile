@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:onepanel_mobile/api/v2/api_client.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/core/services/logger_service.dart';
 import 'package:onepanel_mobile/data/models/website_models.dart';
@@ -20,6 +21,8 @@ class _WebsitesPageState extends State<WebsitesPage> {
   List<WebsiteInfo> _websites = [];
   String? _error;
   String _search = '';
+
+  String t(String key) => I18n.tr(context, key);
 
   @override
   void initState() {
@@ -42,13 +45,15 @@ class _WebsitesPageState extends State<WebsitesPage> {
         pageSize: 50,
         search: _search.isNotEmpty ? _search : null,
       );
-      
+
+      if (!mounted) return;
       setState(() {
         _websites = result.items;
         _isLoading = false;
       });
     } catch (e) {
       LoggerService.error('Websites', 'Failed to load: $e');
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -56,17 +61,33 @@ class _WebsitesPageState extends State<WebsitesPage> {
     }
   }
 
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _operateWebsite(WebsiteInfo website, String operation) async {
+    String opLabel;
+    switch (operation) {
+      case 'start':
+        opLabel = t('start');
+        break;
+      case 'stop':
+        opLabel = t('stop');
+        break;
+      case 'restart':
+        opLabel = t('restart');
+        break;
+      default:
+        opLabel = operation;
+    }
     try {
       await _apiClient.websiteOperation(website.id, operation);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${website.name} ${operation}ed')),
-      );
+      _snack('${website.name} · $opLabel');
       _refresh();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _snack('${t('error')}: $e');
     }
   }
 
@@ -77,23 +98,23 @@ class _WebsitesPageState extends State<WebsitesPage> {
         _buildSearchBar(),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () => _refresh(),
+            onRefresh: _refresh,
             child: _isLoading
-              ? const ShimmerLoader()
-              : _error != null
-                ? Center(child: Text('Error: $_error'))
-                : _websites.isEmpty
-                  ? const Center(child: Text('No websites found'))
-                  : ListView.builder(
-                      itemCount: _websites.length,
-                      itemBuilder: (context, index) {
-                        final website = _websites[index];
-                        return _WebsiteCard(
-                          website: website,
-                          onTap: () => _showWebsiteActions(website),
-                        );
-                      },
-                    ),
+                ? const ShimmerLoader()
+                : _error != null
+                    ? Center(child: Text('${t('error')}: $_error'))
+                    : _websites.isEmpty
+                        ? Center(child: Text(t('noWebsitesFound')))
+                        : ListView.builder(
+                            itemCount: _websites.length,
+                            itemBuilder: (context, index) {
+                              final website = _websites[index];
+                              return _WebsiteCard(
+                                website: website,
+                                onTap: () => _showWebsiteActions(website),
+                              );
+                            },
+                          ),
           ),
         ),
       ],
@@ -108,7 +129,7 @@ class _WebsitesPageState extends State<WebsitesPage> {
           Expanded(
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Search websites...',
+                hintText: t('searchWebsitesHint'),
                 prefixIcon: const Icon(Icons.search),
                 border: const OutlineInputBorder(),
                 isDense: true,
@@ -141,20 +162,20 @@ class _WebsitesPageState extends State<WebsitesPage> {
             if (website.isRunning) ...[
               _ActionTile(
                 icon: Icons.stop,
-                title: 'Stop',
+                title: t('stop'),
                 onTap: () => _operateWebsite(website, 'stop'),
               ),
             ],
             if (website.isStopped) ...[
               _ActionTile(
                 icon: Icons.play_arrow,
-                title: 'Start',
+                title: t('start'),
                 onTap: () => _operateWebsite(website, 'start'),
               ),
             ],
             _ActionTile(
               icon: Icons.restart_alt,
-              title: 'Restart',
+              title: t('restart'),
               onTap: () => _operateWebsite(website, 'restart'),
             ),
           ],
@@ -199,23 +220,23 @@ class _WebsiteCard extends StatelessWidget {
             Text(
               website.domain,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             if (website.primaryDomain != null) ...[
               const SizedBox(height: 4),
               Text(
-                'Primary: ${website.primaryDomain}',
+                '${I18n.tr(context, 'primary')}: ${website.primaryDomain}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             ],
           ],
         ),
         trailing: Chip(
           label: Text(
-            website.status ?? 'Unknown',
+            website.status ?? I18n.tr(context, 'unknown'),
             style: TextStyle(color: statusColor, fontSize: 12),
           ),
           backgroundColor: statusColor.withAlpha(50),

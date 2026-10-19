@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
-import 'package:onepanel_mobile/core/services/logger_service.dart';
-import 'package:onepanel_mobile/api/v2/api_client.dart';
 import 'package:onepanel_mobile/pages/dashboard_page.dart';
 import 'package:onepanel_mobile/pages/containers_page.dart';
 import 'package:onepanel_mobile/pages/websites_page.dart';
@@ -11,7 +10,6 @@ import 'package:onepanel_mobile/pages/files_page.dart';
 import 'package:onepanel_mobile/pages/monitor_page.dart';
 import 'package:onepanel_mobile/pages/settings_page.dart';
 import 'package:onepanel_mobile/pages/server_list_page.dart';
-import 'package:onepanel_mobile/widgets/server_selector.dart';
 
 class AppMainPage extends StatefulWidget {
   const AppMainPage({super.key});
@@ -20,28 +18,27 @@ class AppMainPage extends StatefulWidget {
   State<AppMainPage> createState() => _AppMainPageState();
 }
 
-class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStateMixin {
+class _AppMainPageState extends State<AppMainPage>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   late TabController _tabController;
-  late OnePanelApiClient _apiClient;
 
-  final List<Widget> _pages = [
-    const DashboardPage(),
-    const ContainersPage(),
-    const WebsitesPage(),
-    const DatabasesPage(),
-    const FilesPage(),
-    const MonitorPage(),
-    const SettingsPage(),
+  final List<Widget> _pages = const [
+    DashboardPage(),
+    ContainersPage(),
+    WebsitesPage(),
+    DatabasesPage(),
+    FilesPage(),
+    MonitorPage(),
+    SettingsPage(),
   ];
+
+  String t(String key) => I18n.tr(context, key);
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
-    _apiClient = OnePanelApiClient(
-      serverService: Provider.of<ServerService>(context, listen: false),
-    );
+    _tabController = TabController(length: _pages.length, vsync: this);
   }
 
   @override
@@ -51,10 +48,9 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
     _tabController.animateTo(index);
+    Navigator.of(context).pop(); // 从抽屉进入时收起抽屉
   }
 
   @override
@@ -64,11 +60,12 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
 
     return Scaffold(
       appBar: AppBar(
-        title: currentServer != null
-          ? Text(currentServer.name)
-          : const Text('1Panel Client'),
+        title: Text(
+          currentServer != null ? currentServer.name : t('appName'),
+        ),
         actions: [
           IconButton(
+            tooltip: t('serverList'),
             icon: const Icon(Icons.dns),
             onPressed: () {
               Navigator.of(context).push(
@@ -86,7 +83,8 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
 
   Widget _buildDrawer(BuildContext context, ServerService serverService) {
     return Drawer(
-      child: Column(
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
@@ -97,68 +95,33 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  '1Panel Client',
+                  t('appName'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  serverService.currentServer?.name ?? 'No server selected',
+                  serverService.currentServer?.name ?? t('noServerSelected'),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
-                  ),
+                        color: Colors.white70,
+                      ),
                 ),
               ],
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.dashboard),
-            title: const Text('Dashboard'),
-            selected: _selectedIndex == 0,
-            onTap: () => _onItemTapped(0),
-          ),
-          ListTile(
-            leading: const Icon(Icons.storage),
-            title: const Text('Containers'),
-            selected: _selectedIndex == 1,
-            onTap: () => _onItemTapped(1),
-          ),
-          ListTile(
-            leading: const Icon(Icons.web),
-            title: const Text('Websites'),
-            selected: _selectedIndex == 2,
-            onTap: () => _onItemTapped(2),
-          ),
-          ListTile(
-            leading: const Icon(Icons.storage),
-            title: const Text('Databases'),
-            selected: _selectedIndex == 3,
-            onTap: () => _onItemTapped(3),
-          ),
-          ListTile(
-            leading: const Icon(Icons.folder),
-            title: const Text('Files'),
-            selected: _selectedIndex == 4,
-            onTap: () => _onItemTapped(4),
-          ),
-          ListTile(
-            leading: const Icon(Icons.assessment),
-            title: const Text('Monitor'),
-            selected: _selectedIndex == 5,
-            onTap: () => _onItemTapped(5),
-          ),
+          _drawerItem(Icons.dashboard, t('dashboard'), 0),
+          _drawerItem(Icons.storage, t('containers'), 1),
+          _drawerItem(Icons.web, t('websites'), 2),
+          _drawerItem(Icons.category, t('databases'), 3),
+          _drawerItem(Icons.folder, t('files'), 4),
+          _drawerItem(Icons.assessment, t('monitor'), 5),
           const Divider(),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-            selected: _selectedIndex == 6,
-            onTap: () => _onItemTapped(6),
-          ),
+          _drawerItem(Icons.settings, t('settings'), 6),
           ListTile(
             leading: const Icon(Icons.dns),
-            title: const Text('Server List'),
+            title: Text(t('serverList')),
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -171,39 +134,27 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
     );
   }
 
+  Widget _drawerItem(IconData icon, String label, int index) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label),
+      selected: _selectedIndex == index,
+      onTap: () => _onItemTapped(index),
+    );
+  }
+
   Widget _buildBottomNavigationBar() {
     return NavigationBar(
       selectedIndex: _selectedIndex,
       onDestinationSelected: _onItemTapped,
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.dashboard),
-          label: 'Dashboard',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.storage),
-          label: 'Containers',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.web),
-          label: 'Websites',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.storage),
-          label: 'DB',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.folder),
-          label: 'Files',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.assessment),
-          label: 'Monitor',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.settings),
-          label: 'Settings',
-        ),
+      destinations: [
+        NavigationDestination(icon: const Icon(Icons.dashboard), label: t('dashboard')),
+        NavigationDestination(icon: const Icon(Icons.storage), label: t('containers')),
+        NavigationDestination(icon: const Icon(Icons.web), label: t('websites')),
+        NavigationDestination(icon: const Icon(Icons.category), label: t('databases')),
+        NavigationDestination(icon: const Icon(Icons.folder), label: t('files')),
+        NavigationDestination(icon: const Icon(Icons.assessment), label: t('monitor')),
+        NavigationDestination(icon: const Icon(Icons.settings), label: t('settings')),
       ],
     );
   }

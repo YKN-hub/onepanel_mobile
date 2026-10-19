@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:onepanel_mobile/api/v2/api_client.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/core/services/logger_service.dart';
 import 'package:onepanel_mobile/data/models/database_models.dart';
@@ -21,6 +22,8 @@ class _DatabasesPageState extends State<DatabasesPage> {
   String? _error;
   String _search = '';
   String _typeFilter = 'all';
+
+  String t(String key) => I18n.tr(context, key);
 
   @override
   void initState() {
@@ -44,13 +47,15 @@ class _DatabasesPageState extends State<DatabasesPage> {
         type: _typeFilter != 'all' ? _typeFilter : null,
         search: _search.isNotEmpty ? _search : null,
       );
-      
+
+      if (!mounted) return;
       setState(() {
         _databases = result.items;
         _isLoading = false;
       });
     } catch (e) {
       LoggerService.error('Databases', 'Failed to load: $e');
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -58,17 +63,34 @@ class _DatabasesPageState extends State<DatabasesPage> {
     }
   }
 
-  Future<void> _operateDatabase(DatabaseInfo database, String operation) async {
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _operateDatabase(
+      DatabaseInfo database, String operation) async {
+    String opLabel;
+    switch (operation) {
+      case 'start':
+        opLabel = t('start');
+        break;
+      case 'stop':
+        opLabel = t('stop');
+        break;
+      case 'restart':
+        opLabel = t('restart');
+        break;
+      default:
+        opLabel = operation;
+    }
     try {
       await _apiClient.databaseOperation(database.id, operation);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${database.name} ${operation}ed')),
-      );
+      _snack('${database.name} · $opLabel');
       _refresh();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _snack('${t('error')}: $e');
     }
   }
 
@@ -79,23 +101,23 @@ class _DatabasesPageState extends State<DatabasesPage> {
         _buildSearchBar(),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () => _refresh(),
+            onRefresh: _refresh,
             child: _isLoading
-              ? const ShimmerLoader()
-              : _error != null
-                ? Center(child: Text('Error: $_error'))
-                : _databases.isEmpty
-                  ? const Center(child: Text('No databases found'))
-                  : ListView.builder(
-                      itemCount: _databases.length,
-                      itemBuilder: (context, index) {
-                        final database = _databases[index];
-                        return _DatabaseCard(
-                          database: database,
-                          onTap: () => _showDatabaseActions(database),
-                        );
-                      },
-                    ),
+                ? const ShimmerLoader()
+                : _error != null
+                    ? Center(child: Text('${t('error')}: $_error'))
+                    : _databases.isEmpty
+                        ? Center(child: Text(t('noDatabasesFound')))
+                        : ListView.builder(
+                            itemCount: _databases.length,
+                            itemBuilder: (context, index) {
+                              final database = _databases[index];
+                              return _DatabaseCard(
+                                database: database,
+                                onTap: () => _showDatabaseActions(database),
+                              );
+                            },
+                          ),
           ),
         ),
       ],
@@ -110,7 +132,7 @@ class _DatabasesPageState extends State<DatabasesPage> {
           Expanded(
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Search databases...',
+                hintText: t('searchDatabasesHint'),
                 prefixIcon: const Icon(Icons.search),
                 border: const OutlineInputBorder(),
                 isDense: true,
@@ -125,10 +147,11 @@ class _DatabasesPageState extends State<DatabasesPage> {
           DropdownButton<String>(
             value: _typeFilter,
             items: [
-              const DropdownMenuItem(value: 'all', child: Text('All')),
+              DropdownMenuItem(value: 'all', child: Text(t('all'))),
               const DropdownMenuItem(value: 'mysql', child: Text('MySQL')),
               const DropdownMenuItem(value: 'mariadb', child: Text('MariaDB')),
-              const DropdownMenuItem(value: 'postgresql', child: Text('PostgreSQL')),
+              const DropdownMenuItem(
+                  value: 'postgresql', child: Text('PostgreSQL')),
               const DropdownMenuItem(value: 'redis', child: Text('Redis')),
               const DropdownMenuItem(value: 'mongodb', child: Text('MongoDB')),
             ],
@@ -159,22 +182,22 @@ class _DatabasesPageState extends State<DatabasesPage> {
             if (database.isRunning) ...[
               _ActionTile(
                 icon: Icons.stop,
-                title: 'Stop',
+                title: t('stop'),
                 onTap: () => _operateDatabase(database, 'stop'),
               ),
             ],
             if (database.isStopped) ...[
               _ActionTile(
                 icon: Icons.play_arrow,
-                title: 'Start',
+                title: t('start'),
                 onTap: () => _operateDatabase(database, 'start'),
               ),
             ],
             _ActionTile(
-                icon: Icons.restart_alt,
-                title: 'Restart',
-                onTap: () => _operateDatabase(database, 'restart'),
-              ),
+              icon: Icons.restart_alt,
+              title: t('restart'),
+              onTap: () => _operateDatabase(database, 'restart'),
+            ),
           ],
         ),
       ),
@@ -194,7 +217,6 @@ class _DatabaseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = database.isRunning ? Colors.green : Colors.grey;
-    final typeColor = _getTypeColor(database.type);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -203,12 +225,12 @@ class _DatabaseCard extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: typeColor.withAlpha(50),
+            color: statusColor.withAlpha(50),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
-            _getIconForType(database.type),
-            color: typeColor,
+            Icons.storage,
+            color: _getTypeColor(database.type),
           ),
         ),
         title: Text(
@@ -221,23 +243,23 @@ class _DatabaseCard extends StatelessWidget {
             Text(
               database.typeLabel,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             if (database.host != null) ...[
               const SizedBox(height: 4),
               Text(
                 '${database.host}:${database.port}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             ],
           ],
         ),
         trailing: Chip(
           label: Text(
-            database.status ?? 'Unknown',
+            database.status ?? I18n.tr(context, 'unknown'),
             style: TextStyle(color: statusColor, fontSize: 12),
           ),
           backgroundColor: statusColor.withAlpha(50),
@@ -260,22 +282,6 @@ class _DatabaseCard extends StatelessWidget {
         return Colors.green;
       default:
         return Colors.grey;
-    }
-  }
-
-  IconData _getIconForType(String type) {
-    switch (type) {
-      case 'mysql':
-      case 'mariadb':
-        return Icons.storage;
-      case 'postgresql':
-        return Icons.storage;
-      case 'redis':
-        return Icons.storage;
-      case 'mongodb':
-        return Icons.storage;
-      default:
-        return Icons.storage;
     }
   }
 }

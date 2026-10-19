@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
-import 'package:onepanel_mobile/core/services/logger_service.dart';
 import 'package:onepanel_mobile/pages/app_main_page.dart';
 import 'package:onepanel_mobile/pages/server_add_page.dart';
 
@@ -84,7 +84,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 10),
               Text(
-                'Server Management',
+                I18n.tr(context, 'serverManagement'),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Colors.white70,
                 ),

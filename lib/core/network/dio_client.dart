@@ -14,6 +14,10 @@ class DioClient {
 
   DioClient({required this.serverService}) {
     _initDio();
+    final current = serverService.currentServer;
+    if (current != null && current.skipSSLVerify) {
+      updateSSLSettings(true);
+    }
   }
 
   void _initDio() {

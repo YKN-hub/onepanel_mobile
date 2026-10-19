@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:onepanel_mobile/core/config/app_config.dart';
+import 'package:onepanel_mobile/core/network/api_url.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/core/services/logger_service.dart';
 
@@ -15,14 +16,18 @@ class AuthInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final server = serverService.currentServer;
-    if (server != null) {
+    final base = resolveApiBaseUrl(server);
+    if (base != null) {
+      options.baseUrl = base;
+    }
+    if (server != null && server.apiKey.isNotEmpty) {
       final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final token = _generateToken(server.apiKey, timestamp);
 
       options.headers['1Panel-Token'] = token;
       options.headers['1Panel-Timestamp'] = timestamp.toString();
 
-      LoggerService.info('Auth', 'Token generated for ${server.name}');
+      LoggerService.debug('Auth', 'Token generated for ${server.name}');
     }
 
     handler.next(options);

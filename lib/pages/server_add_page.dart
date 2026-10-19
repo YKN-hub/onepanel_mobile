@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:onepanel_mobile/api/v2/api_client.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/data/models/server_info.dart';
 
@@ -22,9 +23,12 @@ class _ServerAddPageState extends State<ServerAddPage> {
   final _passwordController = TextEditingController();
   final _notesController = TextEditingController();
 
-  bool _useSSL = false;
+  bool _useSSL = true;
   bool _skipSSLVerify = false;
-  bool _isLoading = false;
+  bool _isTesting = false;
+  bool _isSaving = false;
+
+  String t(String key) => I18n.tr(context, key);
 
   @override
   void initState() {
@@ -52,11 +56,15 @@ class _ServerAddPageState extends State<ServerAddPage> {
     super.dispose();
   }
 
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
+    setState(() => _isSaving = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
 
     try {
@@ -65,11 +73,17 @@ class _ServerAddPageState extends State<ServerAddPage> {
           'name': _nameController.text.trim(),
           'baseUrl': _baseUrlController.text.trim(),
           'apiKey': _apiKeyController.text.trim(),
-          'username': _usernameController.text.trim(),
-          'password': _passwordController.text.trim(),
+          'username': _usernameController.text.trim().isNotEmpty
+              ? _usernameController.text.trim()
+              : null,
+          'password': _passwordController.text.trim().isNotEmpty
+              ? _passwordController.text.trim()
+              : null,
           'useSSL': _useSSL,
           'skipSSLVerify': _skipSSLVerify,
-          'notes': _notesController.text.trim(),
+          'notes': _notesController.text.trim().isNotEmpty
+              ? _notesController.text.trim()
+              : null,
         });
       } else {
         await serverService.addServer(
@@ -77,16 +91,16 @@ class _ServerAddPageState extends State<ServerAddPage> {
           baseUrl: _baseUrlController.text.trim(),
           apiKey: _apiKeyController.text.trim(),
           username: _usernameController.text.trim().isNotEmpty
-            ? _usernameController.text.trim()
-            : null,
+              ? _usernameController.text.trim()
+              : null,
           password: _passwordController.text.trim().isNotEmpty
-            ? _passwordController.text.trim()
-            : null,
+              ? _passwordController.text.trim()
+              : null,
           useSSL: _useSSL,
           skipSSLVerify: _skipSSLVerify,
           notes: _notesController.text.trim().isNotEmpty
-            ? _notesController.text.trim()
-            : null,
+              ? _notesController.text.trim()
+              : null,
         );
       }
 
@@ -94,14 +108,10 @@ class _ServerAddPageState extends State<ServerAddPage> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      _showSnack('${t('error')}: $e');
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isSaving = false);
       }
     }
   }
@@ -109,50 +119,17 @@ class _ServerAddPageState extends State<ServerAddPage> {
   Future<void> _testConnection() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    setState(() => _isTesting = true);
+    final error = await OnePanelApiClient.testConnection(
+      baseUrl: _baseUrlController.text.trim(),
+      apiKey: _apiKeyController.text.trim(),
+      useSSL: _useSSL,
+      skipSSLVerify: _skipSSLVerify,
+    );
 
-    try {
-      final serverService = Provider.of<ServerService>(context, listen: false);
-      
-      // 临时添加服务器进行测试
-      await serverService.addServer(
-        name: 'Test Connection',
-        baseUrl: _baseUrlController.text.trim(),
-        apiKey: _apiKeyController.text.trim(),
-        useSSL: _useSSL,
-        skipSSLVerify: _skipSSLVerify,
-      );
-
-      // 测试连接
-      final apiClient = OnePanelApiClient(serverService: serverService);
-      apiClient.updateServerConfig(
-        _baseUrlController.text.trim(),
-        _skipSSLVerify,
-      );
-
-      await apiClient.getBaseInfo();
-
-      // 删除测试服务器
-      final servers = serverService.servers;
-      if (servers.isNotEmpty) {
-        await serverService.deleteServer(servers.last.id);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connection successful!')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connection failed: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    if (mounted) {
+      setState(() => _isTesting = false);
+      _showSnack(error == null ? t('connectionSuccess') : '${t('connectionFailed')}: $error');
     }
   }
 
@@ -160,7 +137,7 @@ class _ServerAddPageState extends State<ServerAddPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.server != null ? 'Edit Server' : 'Add Server'),
+        title: Text(widget.server != null ? t('editServer') : t('addServer')),
       ),
       body: Form(
         key: _formKey,
@@ -168,21 +145,23 @@ class _ServerAddPageState extends State<ServerAddPage> {
           padding: const EdgeInsets.all(16),
           children: [
             _buildTextField(
-              label: 'Server Name',
-              hint: 'My Server',
+              label: t('serverName'),
+              hint: t('myServerHint'),
               controller: _nameController,
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? t('nameRequired') : null,
               icon: Icons.label,
             ),
             const SizedBox(height: 16),
             _buildTextField(
-              label: 'Base URL',
-              hint: 'http://192.168.1.100:7800',
+              label: t('baseUrl'),
+              hint: t('urlHint'),
               controller: _baseUrlController,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Required';
-                if (!v.startsWith('http://') && !v.startsWith('https://')) {
-                  return 'Must start with http:// or https://';
+                if (v == null || v.trim().isEmpty) return t('urlRequired');
+                final s = v.trim();
+                if (!s.startsWith('http://') && !s.startsWith('https://')) {
+                  return t('urlFormat');
                 }
                 return null;
               },
@@ -190,24 +169,25 @@ class _ServerAddPageState extends State<ServerAddPage> {
             ),
             const SizedBox(height: 16),
             _buildTextField(
-              label: 'API Key',
-              hint: 'Enter API Key from 1Panel settings',
+              label: t('apiKey'),
+              hint: t('keyHint'),
               controller: _apiKeyController,
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? t('keyRequired') : null,
               icon: Icons.key,
               obscure: true,
             ),
             const SizedBox(height: 16),
             _buildTextField(
-              label: 'Username (optional)',
+              label: t('usernameHint'),
               hint: 'admin',
               controller: _usernameController,
               icon: Icons.person,
             ),
             const SizedBox(height: 16),
             _buildTextField(
-              label: 'Password (optional)',
-              hint: 'password',
+              label: t('passwordHint'),
+              hint: '******',
               controller: _passwordController,
               icon: Icons.lock,
               obscure: true,
@@ -216,8 +196,8 @@ class _ServerAddPageState extends State<ServerAddPage> {
             _buildSSLSettings(),
             const SizedBox(height: 16),
             _buildTextField(
-              label: 'Notes (optional)',
-              hint: 'Production server',
+              label: t('notesHint'),
+              hint: '',
               controller: _notesController,
               icon: Icons.note,
               maxLines: 3,
@@ -227,21 +207,27 @@ class _ServerAddPageState extends State<ServerAddPage> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: _testConnection,
-                    child: const Text('Test Connection'),
+                    onPressed: _isTesting ? null : _testConnection,
+                    child: _isTesting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(t('testConnection')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: _isLoading ? null : _save,
-                    child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Save'),
+                    onPressed: _isSaving ? null : _save,
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(t('save')),
                   ),
                 ),
               ],
@@ -283,21 +269,22 @@ class _ServerAddPageState extends State<ServerAddPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'SSL Settings',
+              t('sslSettings'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 12),
             SwitchListTile(
-              title: const Text('Use SSL/HTTPS'),
-              subtitle: const Text('Connect using HTTPS'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(t('useSSL')),
               value: _useSSL,
               onChanged: (v) => setState(() => _useSSL = v),
             ),
             SwitchListTile(
-              title: const Text('Skip SSL Verification'),
-              subtitle: const Text('Allow self-signed certificates'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(t('skipSSLVerify')),
+              subtitle: Text(t('allowSelfSigned')),
               value: _skipSSLVerify,
               onChanged: (v) => setState(() => _skipSSLVerify = v),
             ),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/data/models/server_info.dart';
 import 'package:onepanel_mobile/pages/server_add_page.dart';
 
 class ServerListPage extends StatelessWidget {
   const ServerListPage({super.key});
+
+  String t(BuildContext context, String key) => I18n.tr(context, key);
 
   @override
   Widget build(BuildContext context) {
@@ -14,9 +17,10 @@ class ServerListPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Servers'),
+        title: Text(t(context, 'servers')),
         actions: [
           IconButton(
+            tooltip: t(context, 'addServer'),
             icon: const Icon(Icons.add),
             onPressed: () {
               Navigator.of(context).push(
@@ -27,33 +31,33 @@ class ServerListPage extends StatelessWidget {
         ],
       ),
       body: servers.isEmpty
-        ? _buildEmptyState(context)
-        : ListView.builder(
-            itemCount: servers.length,
-            itemBuilder: (context, index) {
-              final server = servers[index];
-              return _ServerListTile(
-                server: server,
-                isCurrent: server.id == serverService.currentServer?.id,
-                onTap: () async {
-                  await serverService.switchServer(server.id);
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                },
-                onEdit: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ServerAddPage(server: server),
-                    ),
-                  );
-                },
-                onDelete: () {
-                  _showDeleteDialog(context, server, serverService);
-                },
-              );
-            },
-          ),
+          ? _buildEmptyState(context)
+          : ListView.builder(
+              itemCount: servers.length,
+              itemBuilder: (context, index) {
+                final server = servers[index];
+                return _ServerListTile(
+                  server: server,
+                  isCurrent: server.id == serverService.currentServer?.id,
+                  onTap: () async {
+                    await serverService.switchServer(server.id);
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  onEdit: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ServerAddPage(server: server),
+                      ),
+                    );
+                  },
+                  onDelete: () {
+                    _showDeleteDialog(context, server, serverService);
+                  },
+                );
+              },
+            ),
     );
   }
 
@@ -69,20 +73,20 @@ class ServerListPage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'No servers yet',
+            t(context, 'noServersYet'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 10),
           Text(
-            'Add your first 1Panel server to get started',
+            t(context, 'noServersHint'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             icon: const Icon(Icons.add),
-            label: const Text('Add Server'),
+            label: Text(t(context, 'addServer')),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ServerAddPage()),
@@ -102,12 +106,14 @@ class ServerListPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Server'),
-        content: Text('Are you sure you want to delete "${server.name}"?'),
+        title: Text(t(context, 'deleteServer')),
+        content: Text(
+          t(context, 'deleteServerConfirm').replaceAll('{name}', server.name),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(t(context, 'cancel')),
           ),
           FilledButton(
             onPressed: () async {
@@ -119,7 +125,7 @@ class ServerListPage extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: const Text('Delete'),
+            child: Text(t(context, 'delete')),
           ),
         ],
       ),
@@ -152,15 +158,15 @@ class _ServerListTile extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             color: isCurrent
-              ? Theme.of(context).colorScheme.primary.withAlpha(50)
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                ? Theme.of(context).colorScheme.primary.withAlpha(50)
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             isCurrent ? Icons.check_circle : Icons.dns,
             color: isCurrent
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         title: Text(
@@ -172,20 +178,23 @@ class _ServerListTile extends StatelessWidget {
         subtitle: Text(
           server.baseUrl,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
         onTap: onTap,
         trailing: PopupMenuButton(
           icon: const Icon(Icons.more_vert),
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'edit',
-              child: Text('Edit'),
+              child: Text(I18n.tr(context, 'edit')),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
-              child: Text('Delete', style: TextStyle(color: Colors.red)),
+              child: Text(
+                I18n.tr(context, 'delete'),
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
           ],
           onSelected: (value) {

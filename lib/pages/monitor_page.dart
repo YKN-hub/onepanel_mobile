@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:onepanel_mobile/api/v2/api_client.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/core/services/logger_service.dart';
 import 'package:onepanel_mobile/data/models/monitor_models.dart';
 import 'package:onepanel_mobile/widgets/shimmer_loader.dart';
-import 'package:percent_indicator/percent_indicator.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class MonitorPage extends StatefulWidget {
@@ -15,12 +15,15 @@ class MonitorPage extends StatefulWidget {
   State<MonitorPage> createState() => _MonitorPageState();
 }
 
-class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStateMixin {
+class _MonitorPageState extends State<MonitorPage>
+    with SingleTickerProviderStateMixin {
   late OnePanelApiClient _apiClient;
   bool _isLoading = true;
   MonitorData? _monitorData;
   String? _error;
   int _timeRange = 1; // 1: 1h, 2: 6h, 3: 24h, 4: 7d
+
+  String t(String key) => I18n.tr(context, key);
 
   @override
   void initState() {
@@ -39,13 +42,15 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
 
     try {
       final data = await _apiClient.getMonitorData();
-      
+
+      if (!mounted) return;
       setState(() {
         _monitorData = data;
         _isLoading = false;
       });
     } catch (e) {
       LoggerService.error('Monitor', 'Failed to load: $e');
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -56,14 +61,14 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: () => _refresh(),
+      onRefresh: _refresh,
       child: _isLoading
-        ? const ShimmerLoader()
-        : _error != null
-          ? Center(child: Text('Error: $_error'))
-          : _monitorData == null
-            ? const Center(child: Text('No data'))
-            : _buildMonitor(),
+          ? const ShimmerLoader()
+          : _error != null
+              ? Center(child: Text('${t('error')}: $_error'))
+              : _monitorData == null
+                  ? Center(child: Text(t('noMonitorData')))
+                  : _buildMonitor(),
     );
   }
 
@@ -74,11 +79,16 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
         children: [
           _buildTimeRangeSelector(),
           const SizedBox(height: 16),
-          _buildChart('CPU Usage (%)', _monitorData!.cpu, Colors.blue),
+          _buildChart(t('cpuChart'), _monitorData!.cpu, Colors.blue),
           const SizedBox(height: 16),
-          _buildChart('Memory Usage (%)', _monitorData!.memory, Colors.green),
+          _buildChart(t('memoryChart'), _monitorData!.memory, Colors.green),
           const SizedBox(height: 16),
-          _buildChart('Network (KB/s)', _monitorData!.networkIn, Colors.orange, isOut: _monitorData!.networkOut),
+          _buildChart(
+            t('networkChart'),
+            _monitorData!.networkIn,
+            Colors.orange,
+            isOut: _monitorData!.networkOut,
+          ),
         ],
       ),
     );
@@ -113,8 +123,8 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
   }
 
   Widget _buildChart(
-    String title, 
-    List<double> data, 
+    String title,
+    List<double> data,
     Color color, {
     List<double>? isOut,
   }) {
@@ -127,8 +137,8 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -141,26 +151,36 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
                   minX: 0,
                   maxX: data.length > 10 ? data.length.toDouble() - 1 : 10,
                   minY: 0,
-                  maxY: data.isNotEmpty ? data.reduce((a, b) => a > b ? a : b) * 1.2 : 100,
+                  maxY: data.isNotEmpty
+                      ? data.reduce((a, b) => a > b ? a : b) * 1.2
+                      : 100,
                   lineBarsData: [
                     LineChartBarData(
-                      spots: data.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
+                      spots: data
+                          .asMap()
+                          .entries
+                          .map((e) => FlSpot(e.key.toDouble(), e.value))
+                          .toList(),
                       isCurved: true,
                       color: color,
                       barWidth: 2,
                       isStrokeCapRound: true,
                       belowBarData: BarAreaData(show: false),
                     ),
-                    if (isOut != null) ...[
+                    if (isOut != null)
                       LineChartBarData(
-                        spots: isOut.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.toDouble())).toList(),
+                        spots: isOut
+                            .asMap()
+                            .entries
+                            .map((e) =>
+                                FlSpot(e.key.toDouble(), e.value.toDouble()))
+                            .toList(),
                         isCurved: true,
                         color: Colors.red,
                         barWidth: 2,
                         isStrokeCapRound: true,
                         belowBarData: BarAreaData(show: false),
                       ),
-                    ],
                   ],
                 ),
               ),

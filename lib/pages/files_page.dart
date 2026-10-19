@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:onepanel_mobile/api/v2/api_client.dart';
+import 'package:onepanel_mobile/core/i18n/i18n.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/core/services/logger_service.dart';
 import 'package:onepanel_mobile/data/models/file_models.dart';
@@ -22,6 +23,8 @@ class _FilesPageState extends State<FilesPage> {
   String _currentPath = '/';
   String _search = '';
 
+  String t(String key) => I18n.tr(context, key);
+
   @override
   void initState() {
     super.initState();
@@ -39,13 +42,15 @@ class _FilesPageState extends State<FilesPage> {
 
     try {
       final files = await _apiClient.getFileList(_currentPath);
-      
+
+      if (!mounted) return;
       setState(() {
         _files = files;
         _isLoading = false;
       });
     } catch (e) {
       LoggerService.error('Files', 'Failed to load: $e');
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -54,27 +59,29 @@ class _FilesPageState extends State<FilesPage> {
   }
 
   Future<void> _navigateTo(String path) async {
-    setState(() {
-      _currentPath = path;
-    });
+    setState(() => _currentPath = path);
     _refresh();
   }
+
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _joinPath(String name) =>
+      _currentPath == '/' ? '/$name' : '$_currentPath/$name';
 
   Future<void> _createFile(bool isDir) async {
     final name = await _showCreateDialog(isDir);
     if (name == null || name.isEmpty) return;
 
-    final path = _currentPath == '/' 
-      ? '/$name' 
-      : '${_currentPath}/$name';
-
+    final path = _joinPath(name);
     try {
       await _apiClient.createFile(path, isDir);
       _refresh();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _snack('${t('error')}: $e');
     }
   }
 
@@ -83,19 +90,19 @@ class _FilesPageState extends State<FilesPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isDir ? 'Create Directory' : 'Create File'),
+        title: Text(isDir ? t('createDirectory') : t('createFile')),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(hintText: 'Name'),
+          decoration: InputDecoration(hintText: t('name')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(t('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Create'),
+            child: Text(t('create')),
           ),
         ],
       ),
@@ -104,17 +111,12 @@ class _FilesPageState extends State<FilesPage> {
   }
 
   Future<void> _deleteFile(FileInfo file) async {
-    final path = _currentPath == '/' 
-      ? '/${file.name}' 
-      : '${_currentPath}/${file.name}';
-
+    final path = _joinPath(file.name);
     try {
       await _apiClient.deleteFile(path);
       _refresh();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _snack('${t('error')}: $e');
     }
   }
 
@@ -122,20 +124,13 @@ class _FilesPageState extends State<FilesPage> {
     final newName = await _showRenameDialog(file.name);
     if (newName == null || newName.isEmpty) return;
 
-    final oldPath = _currentPath == '/' 
-      ? '/${file.name}' 
-      : '${_currentPath}/${file.name}';
-    final newPath = _currentPath == '/' 
-      ? '/$newName' 
-      : '${_currentPath}/$newName';
-
+    final oldPath = _joinPath(file.name);
+    final newPath = _joinPath(newName);
     try {
       await _apiClient.renameFile(oldPath, newPath);
       _refresh();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _snack('${t('error')}: $e');
     }
   }
 
@@ -144,19 +139,19 @@ class _FilesPageState extends State<FilesPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename'),
+        title: Text(t('rename')),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(hintText: 'New name'),
+          decoration: InputDecoration(hintText: t('newName')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(t('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Rename'),
+            child: Text(t('rename')),
           ),
         ],
       ),
@@ -174,25 +169,23 @@ class _FilesPageState extends State<FilesPage> {
           children: [
             ListTile(
               title: Text(file.name),
-              subtitle: Text(file.isDir ? 'Directory' : 'File'),
+              subtitle: Text(file.isDir ? t('directory') : t('fileLabel')),
             ),
             const Divider(),
             if (file.isDir) ...[
               _ActionTile(
                 icon: Icons.folder_open,
-                title: 'Open',
+                title: t('open'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _navigateTo(_currentPath == '/' 
-                    ? '/${file.name}' 
-                    : '${_currentPath}/${file.name}');
+                  _navigateTo(_joinPath(file.name));
                 },
               ),
             ],
             if (file.isFile) ...[
               _ActionTile(
                 icon: Icons.visibility,
-                title: 'View',
+                title: t('view'),
                 onTap: () {
                   Navigator.of(context).pop();
                   _viewFile(file);
@@ -201,7 +194,7 @@ class _FilesPageState extends State<FilesPage> {
             ],
             _ActionTile(
               icon: Icons.edit,
-              title: 'Rename',
+              title: t('rename'),
               onTap: () {
                 Navigator.of(context).pop();
                 _renameFile(file);
@@ -209,7 +202,7 @@ class _FilesPageState extends State<FilesPage> {
             ),
             _ActionTile(
               icon: Icons.delete,
-              title: 'Delete',
+              title: t('delete'),
               color: Colors.red,
               onTap: () {
                 Navigator.of(context).pop();
@@ -226,12 +219,12 @@ class _FilesPageState extends State<FilesPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete'),
-        content: Text('Are you sure you want to delete "${file.name}"?'),
+        title: Text(t('delete')),
+        content: Text(t('deleteConfirm').replaceAll('{name}', file.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(t('cancel')),
           ),
           FilledButton(
             onPressed: () {
@@ -239,7 +232,7 @@ class _FilesPageState extends State<FilesPage> {
               _deleteFile(file);
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(t('delete')),
           ),
         ],
       ),
@@ -247,12 +240,11 @@ class _FilesPageState extends State<FilesPage> {
   }
 
   Future<void> _viewFile(FileInfo file) async {
-    final path = _currentPath == '/' 
-      ? '/${file.name}' 
-      : '${_currentPath}/${file.name}';
+    final path = _joinPath(file.name);
 
     try {
       final content = await _apiClient.readFileContent(path);
+      if (!mounted) return;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -260,20 +252,18 @@ class _FilesPageState extends State<FilesPage> {
           content: SizedBox(
             width: double.maxFinite,
             height: 400,
-            child: SelectableText(content),
+            child: SingleChildScrollView(child: SelectableText(content)),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: Text(t('close')),
             ),
           ],
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _snack('${t('error')}: $e');
     }
   }
 
@@ -284,23 +274,23 @@ class _FilesPageState extends State<FilesPage> {
         _buildPathBar(),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () => _refresh(),
+            onRefresh: _refresh,
             child: _isLoading
-              ? const ShimmerLoader()
-              : _error != null
-                ? Center(child: Text('Error: $_error'))
-                : _files.isEmpty
-                  ? const Center(child: Text('No files found'))
-                  : ListView.builder(
-                      itemCount: _files.length,
-                      itemBuilder: (context, index) {
-                        final file = _files[index];
-                        return _FileCard(
-                          file: file,
-                          onTap: () => _showFileActions(file),
-                        );
-                      },
-                    ),
+                ? const ShimmerLoader()
+                : _error != null
+                    ? Center(child: Text('${t('error')}: $_error'))
+                    : _files.isEmpty
+                        ? Center(child: Text(t('noFilesFoundLong')))
+                        : ListView.builder(
+                            itemCount: _files.length,
+                            itemBuilder: (context, index) {
+                              final file = _files[index];
+                              return _FileCard(
+                                file: file,
+                                onTap: () => _showFileActions(file),
+                              );
+                            },
+                          ),
           ),
         ),
       ],
@@ -315,6 +305,7 @@ class _FilesPageState extends State<FilesPage> {
           Row(
             children: [
               IconButton(
+                tooltip: t('home'),
                 icon: const Icon(Icons.home),
                 onPressed: () => _navigateTo('/'),
               ),
@@ -336,12 +327,12 @@ class _FilesPageState extends State<FilesPage> {
               IconButton(
                 icon: const Icon(Icons.create_new_folder),
                 onPressed: () => _createFile(true),
-                tooltip: 'New Folder',
+                tooltip: t('createFolder'),
               ),
               IconButton(
                 icon: const Icon(Icons.note_add),
                 onPressed: () => _createFile(false),
-                tooltip: 'New File',
+                tooltip: t('createFile'),
               ),
             ],
           ),
@@ -363,9 +354,9 @@ class _FileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icon = file.isDir ? Icons.folder : Icons.insert_drive_file;
-    final color = file.isDir 
-      ? Theme.of(context).colorScheme.primary 
-      : Theme.of(context).colorScheme.onSurfaceVariant;
+    final color = file.isDir
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -374,30 +365,27 @@ class _FileCard extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: file.isDir 
-              ? Theme.of(context).colorScheme.primary.withAlpha(50)
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+            color: file.isDir
+                ? Theme.of(context).colorScheme.primary.withAlpha(50)
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 20),
         ),
         title: Text(
           file.name,
-          style: file.isDir 
-            ? const TextStyle(fontWeight: FontWeight.bold)
-            : null,
+          style:
+              file.isDir ? const TextStyle(fontWeight: FontWeight.bold) : null,
         ),
-        subtitle: file.isDir 
-          ? null
-          : Text(
-              file.sizeDisplay,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+        subtitle: file.isDir
+            ? null
+            : Text(
+                file.sizeDisplay,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
-            ),
-        trailing: file.isDir 
-          ? const Icon(Icons.chevron_right)
-          : null,
+        trailing: file.isDir ? const Icon(Icons.chevron_right) : null,
         onTap: onTap,
       ),
     );

@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:onepanel_mobile/core/config/app_config.dart';
+import 'package:onepanel_mobile/core/network/api_url.dart';
 import 'package:onepanel_mobile/core/network/dio_client.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/core/services/logger_service.dart';
@@ -28,6 +34,69 @@ class OnePanelApiClient {
   void updateServerConfig(String baseUrl, bool skipSSLVerify) {
     _dioClient.updateBaseUrl(baseUrl);
     _dioClient.updateSSLSettings(skipSSLVerify);
+  }
+
+  /// 连通性/鉴权测试：使用传入的地址与密钥直接请求，不写入也不会改动已保存的服务器。
+  /// 返回 null 表示成功，否则返回可读的错误描述（含 HTTP 状态与服务端提示）。
+  static Future<String?> testConnection({
+    required String baseUrl,
+    required String apiKey,
+    bool useSSL = false,
+    bool skipSSLVerify = false,
+  }) async {
+    final dio = Dio(BaseOptions(
+      baseUrl: buildApiBase(baseUrl, useSSL: useSSL),
+      connectTimeout: Duration(seconds: AppConfig.connectTimeout),
+      receiveTimeout: Duration(seconds: AppConfig.receiveTimeout),
+      responseType: ResponseType.json,
+    ));
+    if (skipSSLVerify) {
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.badCertificateCallback = (cert, host, port) => true;
+          return client;
+        },
+      );
+    }
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final tokenBytes = md5.convert(utf8.encode('1panel$apiKey$timestamp'));
+    final token = tokenBytes.toString();
+
+    try {
+      final resp = await dio.get<dynamic>(
+        '/dashboard/base/os',
+        options: Options(headers: {
+          '1Panel-Token': token,
+          '1Panel-Timestamp': timestamp.toString(),
+        }),
+      );
+      final code = resp.statusCode ?? 0;
+      if (code >= 200 && code < 300) return null;
+      return 'HTTP $code';
+    } on DioException catch (e) {
+      return _describeDioError(e);
+    } catch (e) {
+      return e.toString();
+    } finally {
+      dio.close(force: true);
+    }
+  }
+
+  static String _describeDioError(DioException e) {
+    final status = e.response?.statusCode;
+    final body = e.response?.data;
+    final parts = <String>[e.type.name];
+    if (status != null) parts.add('HTTP $status');
+    if (body != null) {
+      var s = body.toString();
+      if (s.length > 200) s = '${s.substring(0, 200)}...';
+      parts.add(s);
+    } else if (e.message != null) {
+      parts.add(e.message!);
+    }
+    return parts.join(' | ');
   }
 
   // ==================== 仪表盘 API ====================

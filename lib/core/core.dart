@@ -1,5 +1,5 @@
-/// 核心配置
-export 'app_config.dart';
-export 'colors.dart';
-export 'theme.dart';
+/// 核心 barrel
+export 'config/app_config.dart';
+export 'config/colors.dart';
+export 'config/theme.dart';
 export 'utils/utils.dart';
