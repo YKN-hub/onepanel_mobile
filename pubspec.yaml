@@ -1,0 +1,51 @@
+name: onepanel_mobile
+description: 1Panel 第三方全平台客户端 (Flutter) - iOS/Android/Windows/macOS/Linux
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # 网络
+  dio: ^5.7.0
+
+  # 状态管理
+  provider: ^6.1.1
+
+  # 存储
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.3.0
+
+  # 工具
+  logger: ^2.4.0
+  uuid: ^4.4.0
+  crypto: ^3.0.3
+
+  # 文件
+  file_picker: ^8.0.0
+  open_file: ^3.3.2
+
+  # UI 增强
+  percent_indicator: ^4.2.3
+  shimmer: ^3.0.0
+
+  # 图表
+  fl_chart: ^0.71.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/

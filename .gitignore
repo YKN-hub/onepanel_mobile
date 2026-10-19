@@ -1,0 +1,73 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android
+android/.gradle/
+android/app/.cxx/
+android/local.properties
+android/key.properties
+*.jks
+
+# iOS
+ios/Pods/
+ios/Podfile.lock
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/app.flx
+ios/Flutter/ephemeral/
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+ios/Runner.xcodeproj/xcshareddata/xcschemes/
+ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+**/DerivedData/
+*.moved-aside
+
+# 证书与密钥（永远不要提交）
+*.cer
+*.p12
+*.mobileprovision
+*.profile
+*.key
+
+# 环境变量
+.env
+.env.*
+!.env.example
+
+# 构建产物
+*.apk
+*.aab
+*.ipa
+*.app
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 日志与临时文件
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+
+# 系统文件
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
