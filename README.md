@@ -1,4 +1,4 @@
-# 1Panel Client - 1Panel 第三方全平台客户端
+# 1Panel Client - 1Panel 第三方客户端
 
 📱 1Panel 第三方客户端 (Flutter) - iOS/Android/
 
