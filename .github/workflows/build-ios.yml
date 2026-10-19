@@ -94,7 +94,31 @@ jobs:
 
       - name: Build iOS
         run: |
-          flutter build ios --${{ inputs.build_type || 'release' }} --no-codesign
+          set -o pipefail
+          # 新版 Flutter 默认用 Swift Package Manager 集成 iOS 插件，
+          # CI 上没有开发者账号时会在签名阶段失败，这里退回 CocoaPods 集成方式。
+          flutter config --no-enable-swift-package-manager || true
+          if ! flutter build ios --${{ inputs.build_type || 'release' }} --no-codesign 2>&1 | tee ios-build.log; then
+            echo "::warning::flutter build ios 失败，改用 xcodebuild 并强制关闭签名"
+            xcodebuild \
+              -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath build/ios/xcode \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY= \
+              CODE_SIGN_STYLE=Manual \
+              DEVELOPMENT_TEAM= \
+              build 2>&1 | tee -a ios-build.log
+            APP="$(find build/ios/xcode/Build/Products -maxdepth 2 -name 'Runner.app' -type d | head -1)"
+            test -n "$APP"
+            rm -rf build/ios/iphoneos/Runner.app
+            mkdir -p build/ios/iphoneos
+            cp -R "$APP" build/ios/iphoneos/Runner.app
+          fi
           ls -la build/ios/iphoneos/
 
       - name: Package unsigned .ipa

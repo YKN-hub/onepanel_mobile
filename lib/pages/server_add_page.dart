@@ -256,8 +256,8 @@ class _ServerAddPageState extends State<ServerAddPage> {
     required String label,
     required String hint,
     required TextEditingController controller,
-    required String? Function(String?)? validator,
     required IconData icon,
+    String? Function(String?)? validator,
     bool obscure = false,
     int maxLines = 1,
   }) {
