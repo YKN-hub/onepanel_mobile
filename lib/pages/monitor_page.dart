@@ -116,7 +116,7 @@ class _MonitorPageState extends State<MonitorPage> with SingleTickerProviderStat
     String title, 
     List<double> data, 
     Color color, {
-    List<int>? isOut,
+    List<double>? isOut,
   }) {
     return Card(
       child: Padding(

@@ -275,7 +275,7 @@ class _DatabaseCard extends StatelessWidget {
       case 'mongodb':
         return Icons.storage;
       default:
-        return Icons.database;
+        return Icons.storage;
     }
   }
 }

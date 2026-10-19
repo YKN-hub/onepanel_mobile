@@ -35,7 +35,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   Future<void> _navigate() async {
     final serverService = Provider.of<ServerService>(context, listen: false);
-    await serverService._init();
+    await serverService.init();
 
     await Future.delayed(const Duration(seconds: 2));
 

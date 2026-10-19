@@ -9,19 +9,14 @@ class ServerService {
   static const String _serverKey = 'onepanel_servers';
   static const String _currentServerIdKey = 'onepanel_current_server_id';
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  final SharedPreferences _prefs = _getPrefs();
   final Uuid _uuid = const Uuid();
-
-  static SharedPreferences _getPrefs() {
-    // 延迟初始化
-    throw UnsupportedError('Use getInstance instead');
-  }
 
   List<ServerInfo> _servers = [];
   ServerInfo? _currentServer;
   bool _initialized = false;
 
-  Future<void> _init() async {
+  /// 首次使用前必须初始化（加载本地存储的服务器列表）
+  Future<void> init() async {
     if (_initialized) return;
     final prefs = await SharedPreferences.getInstance();
     _servers = _loadServers(prefs);
@@ -39,7 +34,8 @@ class ServerService {
   ServerInfo? _loadCurrentServer(SharedPreferences prefs) {
     final currentId = prefs.getString(_currentServerIdKey);
     if (currentId == null) return null;
-    return _servers.firstWhere((s) => s.id == currentId);
+    final matches = _servers.where((s) => s.id == currentId);
+    return matches.isEmpty ? null : matches.first;
   }
 
   List<ServerInfo> get servers {
@@ -63,7 +59,7 @@ class ServerService {
     bool skipSSLVerify = false,
     String? notes,
   }) async {
-    await _init();
+    await init();
     final prefs = await SharedPreferences.getInstance();
 
     final server = ServerInfo(
@@ -92,7 +88,7 @@ class ServerService {
 
   /// 更新服务器
   Future<bool> updateServer(String id, Map<String, dynamic> updates) async {
-    await _init();
+    await init();
     final prefs = await SharedPreferences.getInstance();
 
     final index = _servers.indexWhere((s) => s.id == id);
@@ -125,7 +121,7 @@ class ServerService {
 
   /// 删除服务器
   Future<bool> deleteServer(String id) async {
-    await _init();
+    await init();
     final prefs = await SharedPreferences.getInstance();
 
     _servers.removeWhere((s) => s.id == id);
@@ -145,13 +141,13 @@ class ServerService {
 
   /// 切换当前服务器
   Future<bool> switchServer(String id) async {
-    await _init();
+    await init();
     final prefs = await SharedPreferences.getInstance();
 
-    final server = _servers.firstWhere((s) => s.id == id);
-    if (server == null) return false;
+    final matches = _servers.where((s) => s.id == id);
+    if (matches.isEmpty) return false;
 
-    _currentServer = server;
+    _currentServer = matches.first;
     await prefs.setString(_currentServerIdKey, id);
 
     return true;
@@ -159,7 +155,7 @@ class ServerService {
 
   /// 更新最后连接时间
   Future<void> updateLastConnected() async {
-    await _init();
+    await init();
     final prefs = await SharedPreferences.getInstance();
 
     if (_currentServer == null) return;

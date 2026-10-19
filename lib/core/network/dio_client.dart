@@ -1,10 +1,9 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:onepanel_mobile/core/config/app_config.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/core/network/interceptors/auth_interceptor.dart';
-import 'package:onepanel_mobile/core/network/interceptors/logging_interceptor.dart';
-import 'package:onepanel_mobile/core/network/interceptors/business_response_interceptor.dart';
-import 'package:onepanel_mobile/core/network/interceptors/retry_interceptor.dart';
 import 'package:onepanel_mobile/core/services/logger_service.dart';
 import 'package:onepanel_mobile/data/models/server_info.dart';
 
@@ -34,7 +33,7 @@ class DioClient {
     _dio.interceptors.add(LoggingInterceptor());
     _dio.interceptors.add(AuthInterceptor(serverService));
     _dio.interceptors.add(BusinessResponseInterceptor());
-    _dio.interceptors.add(RetryInterceptor());
+    _dio.interceptors.add(RetryInterceptor(_dio));
   }
 
   /// 更新基础 URL
@@ -45,13 +44,14 @@ class DioClient {
 
   /// 更新 SSL 验证
   void updateSSLSettings(bool skipSSLVerify) {
-    if (skipSSLVerify) {
-      (_dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate =
-          (client) {
+    if (!skipSSLVerify) return;
+    _dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
         client.badCertificateCallback = (cert, host, port) => true;
-        return null;
-      };
-    }
+        return client;
+      },
+    );
   }
 
   /// GET 请求

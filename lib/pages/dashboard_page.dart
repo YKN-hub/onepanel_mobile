@@ -114,7 +114,7 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
           color: Colors.blue,
         ),
         _StatCard(
-          icon: Icons.database,
+          icon: Icons.storage,
           label: 'Databases',
           value: _overview!.totalDatabases.toString(),
           color: Colors.green,

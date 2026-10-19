@@ -4,8 +4,8 @@ class MonitorData {
   final List<double> memory;
   final List<double> swap;
   final List<double> disk;
-  final List<int> networkIn;
-  final List<int> networkOut;
+  final List<double> networkIn;
+  final List<double> networkOut;
   final List<double> load;
   final List<int> time;
 
@@ -39,11 +39,11 @@ class MonitorData {
           .toList() ??
           [],
       networkIn: (json['networkIn'] as List?)
-          ?.map((e) => e as int)
+          ?.map((e) => (e as num).toDouble())
           .toList() ??
           [],
       networkOut: (json['networkOut'] as List?)
-          ?.map((e) => e as int)
+          ?.map((e) => (e as num).toDouble())
           .toList() ??
           [],
       load: (json['load'] as List?)

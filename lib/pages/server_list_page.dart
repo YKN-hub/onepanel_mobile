@@ -37,7 +37,7 @@ class ServerListPage extends StatelessWidget {
                 isCurrent: server.id == serverService.currentServer?.id,
                 onTap: () async {
                   await serverService.switchServer(server.id);
-                  if (mounted) {
+                  if (context.mounted) {
                     Navigator.of(context).pop();
                   }
                 },
@@ -63,7 +63,7 @@ class ServerListPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.server,
+            Icons.dns,
             size: 80,
             color: Theme.of(context).colorScheme.primary.withAlpha(100),
           ),
@@ -112,7 +112,7 @@ class ServerListPage extends StatelessWidget {
           FilledButton(
             onPressed: () async {
               await serverService.deleteServer(server.id);
-              if (mounted) {
+              if (context.mounted) {
                 Navigator.of(context).pop();
               }
             },
@@ -157,7 +157,7 @@ class _ServerListTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
-            isCurrent ? Icons.check_circle : Icons.server,
+            isCurrent ? Icons.check_circle : Icons.dns,
             color: isCurrent
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.onSurfaceVariant,

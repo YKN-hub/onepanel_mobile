@@ -80,8 +80,8 @@ jobs:
           echo "----- ios/Runner -----"
           ls -la ios/Runner
           test -d ios/Runner.xcodeproj
-          test -f ios/Podfile
           test -f ios/Flutter/AppFrameworkInfo.plist
+          # 注意: 新版 Flutter 模板不再自带 ios/Podfile, 由 flutter build 自动生成
 
       - name: Install dependencies
         run: |

@@ -69,7 +69,7 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
           : const Text('1Panel Client'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.server),
+            icon: const Icon(Icons.dns),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ServerListPage()),
@@ -132,7 +132,7 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
             onTap: () => _onItemTapped(2),
           ),
           ListTile(
-            leading: const Icon(Icons.database),
+            leading: const Icon(Icons.storage),
             title: const Text('Databases'),
             selected: _selectedIndex == 3,
             onTap: () => _onItemTapped(3),
@@ -157,7 +157,7 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
             onTap: () => _onItemTapped(6),
           ),
           ListTile(
-            leading: const Icon(Icons.server),
+            leading: const Icon(Icons.dns),
             title: const Text('Server List'),
             onTap: () {
               Navigator.of(context).pop();
@@ -189,7 +189,7 @@ class _AppMainPageState extends State<AppMainPage> with SingleTickerProviderStat
           label: 'Websites',
         ),
         NavigationDestination(
-          icon: Icon(Icons.database),
+          icon: Icon(Icons.storage),
           label: 'DB',
         ),
         NavigationDestination(

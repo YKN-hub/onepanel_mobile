@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:onepanel_mobile/api/v2/api_client.dart';
 import 'package:onepanel_mobile/core/services/server_service.dart';
 import 'package:onepanel_mobile/data/models/server_info.dart';
 
@@ -255,7 +256,7 @@ class _ServerAddPageState extends State<ServerAddPage> {
     required String label,
     required String hint,
     required TextEditingController controller,
-    required String? Function(String?) validator,
+    required String? Function(String?)? validator,
     required IconData icon,
     bool obscure = false,
     int maxLines = 1,
