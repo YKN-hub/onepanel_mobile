@@ -7,7 +7,8 @@ import 'package:onepanel_mobile/pages/splash_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 鍒濆鍖栨棩蹇?  await LoggerService.init();
+  // 初始化日志
+  await LoggerService.init();
   
   runApp(const OnePanelApp());
 }

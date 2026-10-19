@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// 涓婚閰嶇疆
+/// 主题配置
 class AppTheme {
-  /// 娴呰壊涓婚
+  /// 浅色主题
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
@@ -31,7 +31,7 @@ class AppTheme {
     ),
   );
 
-  /// 娣辫壊涓婚
+  /// 深色主题
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(

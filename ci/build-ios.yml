@@ -1,0 +1,189 @@
+name: Build iOS
+
+# 说明：仓库里只保留了自定义的 ios/Runner/Info.plist 与 AppDelegate.swift，
+# 完整的 Xcode 工程（Runner.xcodeproj / Podfile / ios/Flutter 配置）由下面的
+# "Bootstrap native projects" 步骤用 flutter create 生成，避免手工维护 pbxproj。
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'iOS 构建类型'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - debug
+          - release
+
+env:
+  # pubspec.yaml 要求 Dart >= 3.6，因此不能使用 3.16.x（Dart 3.2）
+  FLUTTER_VERSION: '3.47.7'
+  PROJECT_NAME: onepanel_mobile
+  ORGANIZATION: com.onepanel
+  APP_NAME: 1Panel-Client
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Show toolchain
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcode-select -p
+          xcodebuild -version
+          pod --version
+          flutter --version
+
+      - name: Bootstrap native projects
+        run: |
+          set -euo pipefail
+          SCAFFOLD="$RUNNER_TEMP/scaffold/$PROJECT_NAME"
+          rm -rf "$RUNNER_TEMP/scaffold"
+          flutter create \
+            --org "$ORGANIZATION" \
+            --project-name "$PROJECT_NAME" \
+            --platforms=ios,android \
+            --no-pub "$SCAFFOLD"
+
+          # 只补齐缺失文件，绝不覆盖仓库中已有的自定义文件
+          rsync -a --ignore-existing "$SCAFFOLD/ios/" ios/
+          rsync -a --ignore-existing "$SCAFFOLD/android/" android/
+          [ -f .metadata ] || cp "$SCAFFOLD/.metadata" .metadata
+
+          echo "----- ios/ -----"
+          ls -la ios
+          echo "----- ios/Runner -----"
+          ls -la ios/Runner
+          test -d ios/Runner.xcodeproj
+          test -f ios/Podfile
+          test -f ios/Flutter/AppFrameworkInfo.plist
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+          flutter doctor -v
+
+      - name: Analyze (non-blocking)
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Build iOS
+        run: |
+          flutter build ios --${{ inputs.build_type || 'release' }} --no-codesign
+          ls -la build/ios/iphoneos/
+
+      - name: Package unsigned .ipa
+        run: |
+          set -euo pipefail
+          APP="$GITHUB_WORKSPACE/build/ios/iphoneos/Runner.app"
+          test -d "$APP"
+          rm -rf "$RUNNER_TEMP/Payload"
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/Payload/"
+          (cd "$RUNNER_TEMP" && zip -qry "$GITHUB_WORKSPACE/$APP_NAME-unsigned.ipa" Payload)
+          ls -lh "$GITHUB_WORKSPACE/$APP_NAME-unsigned.ipa"
+
+      - name: Archive Xcode project (用于自行签名)
+        run: |
+          set -euo pipefail
+          tar --exclude='ios/Pods' \
+              --exclude='ios/.symlinks' \
+              --exclude='ios/Flutter/ephemeral' \
+              --exclude='ios/Flutter/Flutter.framework' \
+              --exclude='ios/Flutter/Flutter.podspec' \
+              --exclude='ios/Flutter/Generated.xcconfig' \
+              --exclude='ios/Runner/GeneratedPluginRegistrant.*' \
+              --exclude='**/xcuserdata' \
+              -czf "$APP_NAME-xcode-project.tar.gz" ios android .metadata pubspec.yaml pubspec.lock
+          ls -lh "$APP_NAME-xcode-project.tar.gz"
+
+      - name: Upload unsigned iOS .ipa
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-unsigned-ipa
+          path: ${{ env.APP_NAME }}-unsigned.ipa
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Xcode project
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-xcode-project
+          path: ${{ env.APP_NAME }}-xcode-project.tar.gz
+          if-no-files-found: ignore
+          retention-days: 7
+
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bootstrap native projects
+        run: |
+          set -euo pipefail
+          SCAFFOLD="$RUNNER_TEMP/scaffold/$PROJECT_NAME"
+          rm -rf "$RUNNER_TEMP/scaffold"
+          flutter create \
+            --org "$ORGANIZATION" \
+            --project-name "$PROJECT_NAME" \
+            --platforms=android \
+            --no-pub "$SCAFFOLD"
+          rsync -a --ignore-existing "$SCAFFOLD/android/" android/
+          test -f android/app/build.gradle.kts || test -f android/app/build.gradle
+          test -f android/app/src/main/AndroidManifest.xml
+
+      - name: Accept Android SDK licenses
+        run: yes | flutter doctor --android-licenses > /dev/null 2>&1 || true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: |
+          flutter build apk --release
+          ls -la build/app/outputs/flutter-apk/
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
